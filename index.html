@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Producer-Consumer Simulator</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════════════════ -->
+<header>
+  <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Collapse navigation" aria-expanded="true" title="Collapse navigation">☰</button>
+  <div class="brand">
+    <div class="brand-dot paused" id="status-dot"></div>
+    <div>
+      <h1>OS Synchronization Lab</h1>
+      <span>Interactive Operating Systems Learning Environment</span>
+    </div>
+  </div>
+  <div class="status-bar">
+    <span class="breadcrumb" id="route-breadcrumb">Overview</span>
+    <span class="status-pill stopped" id="status-pill">Stopped</span>
+    <span class="status-pill" id="elapsed-pill">0.0s</span>
+    <span class="status-pill" id="conn-pill" style="color:var(--amber)">Connecting…</span>
+  </div>
+</header>
+
+<div class="app-shell">
+  <aside class="app-sidebar" aria-label="Main navigation">
+    <a class="sidebar-brand" href="#/dashboard" aria-label="OS Synchronization Lab dashboard"><span class="sidebar-mark">OS</span><span>SYNC<span class="brand-accent">LAB</span><small>OPERATING SYSTEMS</small></span></a>
+    <a class="sidebar-link active" data-route="dashboard" href="#/dashboard"><span class="nav-symbol">⌂</span>Overview</a>
+    <p class="sidebar-label">CORE SIMULATION</p>
+    <a class="sidebar-link" data-route="simulator" href="#/simulator"><span class="nav-symbol">▦</span>Producer–Consumer</a>
+    <a class="sidebar-link" data-route="buffer" href="#/buffer"><span class="nav-symbol">▤</span>Shared buffer</a>
+    <a class="sidebar-link" data-route="settings" href="#/settings"><span class="nav-symbol">⚙</span>Configuration</a>
+    <p class="sidebar-label">SYNCHRONIZATION</p>
+    <a class="sidebar-link" data-route="process" href="#/process"><span class="nav-symbol">◉</span>Process states</a>
+    <a class="sidebar-link" data-route="semaphore" href="#/semaphore"><span class="nav-symbol">⊙</span>Semaphore inspector</a>
+    <a class="sidebar-link" data-route="mutex" href="#/mutex"><span class="nav-symbol">▣</span>Mutex lab</a>
+    <a class="sidebar-link" data-route="race" href="#/race"><span class="nav-symbol">⇄</span>Race condition</a>
+    <a class="sidebar-link" data-route="flow" href="#/flow"><span class="nav-symbol">⟶</span>Sync flow</a>
+    <p class="sidebar-label">ANALYSIS &amp; LEARNING</p>
+    <a class="sidebar-link" data-route="logs" href="#/logs"><span class="nav-symbol">≡</span>Event logs</a>
+    <a class="sidebar-link" data-route="analytics" href="#/analytics"><span class="nav-symbol">⌁</span>Analytics</a>
+    <a class="sidebar-link" data-route="guided" href="#/guided"><span class="nav-symbol">◇</span>Experiments</a>
+    <a class="sidebar-link" data-route="scheduling" href="#/scheduling"><span class="nav-symbol">▥</span>CPU scheduling</a>
+    <a class="sidebar-link" data-route="queue" href="#/queue"><span class="nav-symbol">☷</span>Process queues</a>
+    <a class="sidebar-link" data-route="docs" href="#/docs"><span class="nav-symbol">▧</span>Documentation</a>
+    <a class="sidebar-link" data-route="viva" href="#/viva"><span class="nav-symbol">◎</span>Viva practice</a>
+    <a class="sidebar-link" data-route="presentation" href="#/presentation"><span class="nav-symbol">▣</span>Presentation</a>
+    <a class="sidebar-link" data-route="about" href="#/about"><span class="nav-symbol">✳</span>About the team</a>
+    <div class="sidebar-foot"><span class="model-indicator"></span> Educational model<small>JavaScript · single event loop</small></div>
+  </aside>
+
+  <main class="app-main">
+    <section class="dashboard-view" id="dashboard-view" aria-labelledby="dashboard-title">
+      <div class="dashboard-heading">
+        <div><p class="eyebrow">OPERATING SYSTEMS · INTERACTIVE LAB</p><h2 id="dashboard-title">OS Synchronization Lab</h2><p>Interactive Operating Systems Learning Environment</p></div>
+        <a class="launch-primary" href="#/simulator"><span class="launch-icon">▶</span> Launch Producer–Consumer Simulator <span aria-hidden="true">↗</span></a>
+      </div>
+      <div class="overview-stats" aria-label="Live simulation summary">
+        <article class="overview-stat"><span>SIMULATION</span><strong id="overview-status">Stopped</strong><small id="overview-runtime">0.0 seconds elapsed</small></article>
+        <article class="overview-stat"><span>ITEMS PRODUCED</span><strong id="overview-produced">0</strong><small>Completed enqueue operations</small></article>
+        <article class="overview-stat"><span>ITEMS CONSUMED</span><strong id="overview-consumed">0</strong><small>Completed dequeue operations</small></article>
+        <article class="overview-stat"><span>BUFFER UTILIZATION</span><strong id="overview-utilization">0%</strong><small id="overview-buffer-count">0 of 6 slots occupied</small></article>
+        <article class="overview-stat"><span>ACTIVE WORKERS</span><strong id="overview-active">0</strong><small id="overview-worker-count">0 configured processes</small></article>
+        <article class="overview-stat"><span>BLOCKED PROCESSES</span><strong id="overview-blocked">0</strong><small>Waiting for a modeled resource</small></article>
+      </div>
+
+      <div class="dashboard-section-heading"><div><p class="eyebrow">WORKSPACES</p><h3>Explore the lab</h3></div><span>Every workspace opens a working simulator feature</span></div>
+      <section class="feature-group" aria-labelledby="group-core"><h4 id="group-core">Core Simulation</h4><div class="feature-grid">
+        <a class="feature-card feature-card-primary" href="#/simulator"><span class="feature-icon">▦</span><span class="feature-copy"><strong>Producer–Consumer Simulator</strong><small>Run the shared circular-buffer simulation and tune its workers.</small></span><span class="feature-state live-state">LIVE</span><span class="feature-open">Open workspace ↗</span></a>
+        <a class="feature-card" href="#/buffer"><span class="feature-icon">▤</span><span class="feature-copy"><strong>Shared Circular Buffer</strong><small>Inspect items, head/tail pointers, and buffer capacity.</small></span><span class="feature-state">CORE</span><span class="feature-open">Open buffer ↗</span></a>
+        <a class="feature-card" href="#/settings"><span class="feature-icon">⚙</span><span class="feature-copy"><strong>Simulation Configuration</strong><small>Adjust buffer size, worker counts, and producer/consumer speed.</small></span><span class="feature-state">SETTINGS</span><span class="feature-open">Open controls ↗</span></a>
+      </div></section>
+
+      <section class="feature-group" aria-labelledby="group-sync"><h4 id="group-sync">Synchronization Labs</h4><div class="feature-grid">
+        <a class="feature-card" href="#/process"><span class="feature-icon">◉</span><span class="feature-copy"><strong>Process State Management</strong><small>Follow transitions, state history, and ready/blocked queues.</small></span><span class="feature-state">MODEL</span><span class="feature-open">Open states ↗</span></a>
+        <a class="feature-card" href="#/semaphore"><span class="feature-icon">⊙</span><span class="feature-copy"><strong>Semaphore Inspector</strong><small>Inspect permits, waiters, wait/signal events, and reservations.</small></span><span class="feature-state">MODEL</span><span class="feature-open">Inspect permits ↗</span></a>
+        <a class="feature-card" href="#/mutex"><span class="feature-icon">▣</span><span class="feature-copy"><strong>Mutex / Critical Section</strong><small>See lock ownership, waiting processes, and serialized buffer access.</small></span><span class="feature-state">MODEL</span><span class="feature-open">Inspect mutex ↗</span></a>
+        <a class="feature-card" href="#/race"><span class="feature-icon">⇄</span><span class="feature-copy"><strong>Race Condition Lab</strong><small>Compare a reproducible lost update with mutex protection.</small></span><span class="feature-state">INTERACTIVE</span><span class="feature-open">Run example ↗</span></a>
+        <a class="feature-card" href="#/flow"><span class="feature-icon">⟶</span><span class="feature-copy"><strong>Synchronization Flow</strong><small>Review the producer/consumer wait, lock, signal ordering.</small></span><span class="feature-state">VISUAL</span><span class="feature-open">View flow ↗</span></a>
+        <a class="feature-card" href="#/logs"><span class="feature-icon">≡</span><span class="feature-copy"><strong>Live Event Logs</strong><small>Review actual state transitions and operation events.</small></span><span class="feature-state">LIVE</span><span class="feature-open">Open logs ↗</span></a>
+      </div></section>
+
+      <section class="feature-group" aria-labelledby="group-analysis"><h4 id="group-analysis">Analytics &amp; Experiments</h4><div class="feature-grid">
+        <a class="feature-card" href="#/analytics"><span class="feature-icon">⌁</span><span class="feature-copy"><strong>Performance Analytics</strong><small>Explore event-derived counts, utilization, throughput, and CSV data.</small></span><span class="feature-state">LIVE DATA</span><span class="feature-open">View analytics ↗</span></a>
+        <a class="feature-card" href="#/guided"><span class="feature-icon">◇</span><span class="feature-copy"><strong>Guided Experiments</strong><small>Configure balanced, full/empty, single-slot, and race scenarios.</small></span><span class="feature-state">8 SCENARIOS</span><span class="feature-open">Choose scenario ↗</span></a>
+        <a class="feature-card" href="#/scheduling"><span class="feature-icon">▥</span><span class="feature-copy"><strong>CPU Scheduling Lab</strong><small>Compare FCFS, non-preemptive SJF, and Round Robin.</small></span><span class="feature-state">3 ALGORITHMS</span><span class="feature-open">Schedule processes ↗</span></a>
+        <a class="feature-card" href="#/queue"><span class="feature-icon">☷</span><span class="feature-copy"><strong>Process Queue Viewer</strong><small>Inspect ready and blocked process queues as they evolve.</small></span><span class="feature-state">LIVE MODEL</span><span class="feature-open">View queues ↗</span></a>
+      </div></section>
+
+      <section class="feature-group" aria-labelledby="group-learning"><h4 id="group-learning">Learning &amp; Presentation</h4><div class="feature-grid">
+        <a class="feature-card" href="#/docs"><span class="feature-icon">▧</span><span class="feature-copy"><strong>Documentation &amp; OS Concepts</strong><small>Open the existing synchronization guide and pseudocode.</small></span><span class="feature-state">REFERENCE</span><span class="feature-open">Read guide ↗</span></a>
+        <a class="feature-card" href="#/viva"><span class="feature-icon">◎</span><span class="feature-copy"><strong>Viva Practice</strong><small>Reveal concise answers to 20 Operating Systems questions.</small></span><span class="feature-state">20 QUESTIONS</span><span class="feature-open">Practice viva ↗</span></a>
+        <a class="feature-card" href="#/presentation"><span class="feature-icon">▣</span><span class="feature-copy"><strong>Presentation Mode</strong><small>Use step-through controls, architecture, glossary, and export.</small></span><span class="feature-state">PROJECTOR</span><span class="feature-open">Open presentation ↗</span></a>
+        <a class="feature-card" href="#/about"><span class="feature-icon">✳</span><span class="feature-copy"><strong>About 404 Invalid Team</strong><small>Meet the students behind the Producer–Consumer Management System.</small></span><span class="feature-state">THE TEAM</span><span class="feature-open">Meet the team ↗</span></a>
+      </div></section>
+
+      <div class="dashboard-bottom-grid">
+        <section class="dashboard-panel"><div class="dashboard-panel-heading"><div><p class="eyebrow">SESSION</p><h3>Quick actions</h3></div><a href="#/simulator">Open simulator ↗</a></div><div class="quick-actions"><button id="overview-start" class="quick-primary">Start</button><button id="overview-pause" disabled>Pause</button><button id="overview-resume" disabled>Resume</button><button id="overview-reset">Reset</button></div><p class="quick-feedback" id="overview-feedback" aria-live="polite">Simulation is stopped.</p></section>
+        <section class="dashboard-panel"><div class="dashboard-panel-heading"><div><p class="eyebrow">EVENT STREAM</p><h3>Recent activity</h3></div><a href="#/logs">View logs ↗</a></div><ol class="recent-activity" id="recent-activity"><li>Simulator initialized. Start a run to record events.</li></ol></section>
+      </div>
+    </section>
+
+    <div id="workspace-view" hidden>
+    <div class="workspace-heading"><a href="#/dashboard">← Back to Dashboard</a><h2 id="workspace-title">Producer–Consumer Simulator</h2><span>Simulation state is preserved while navigating</span></div>
+
+<!-- ═══ MAIN LAYOUT ═══════════════════════════════════════════════════════ -->
+<div class="layout">
+
+  <!-- ── LEFT PANEL ── -->
+  <div class="panel" id="ctrl-panel">
+    <div class="panel-header"><h2>Controls</h2></div>
+    <div class="panel-body">
+
+      <div class="ctrl-group">
+        <button class="primary btn-full" id="btn-start" onclick="startSim()">▶  Start Simulation</button>
+        <div style="height:8px"></div>
+        <button class="danger btn-full" id="btn-stop" onclick="stopSim()" disabled>■  Stop</button>
+        <div style="height:6px"></div>
+        <button class="btn-full" id="btn-reset" onclick="resetSim()">↺  Reset</button>
+      </div>
+
+      <hr class="divider">
+
+      <div class="ctrl-group">
+        <label class="ctrl-label">Buffer Size</label>
+        <div class="ctrl-row">
+          <input type="range" id="buf-size" min="2" max="12" value="6"
+            oninput="document.getElementById('buf-size-val').textContent=this.value">
+          <span class="range-val" id="buf-size-val">6</span>
+        </div>
+      </div>
+
+      <div class="ctrl-group">
+        <label class="ctrl-label">Producers</label>
+        <div class="counter-row">
+          <button class="counter-btn" onclick="adjustCount('prod',-1)">−</button>
+          <span class="counter-num" id="prod-count">2</span>
+          <button class="counter-btn" onclick="adjustCount('prod',1)">+</button>
+          <span style="font-size:11px;color:var(--text3);margin-left:4px">max 4</span>
+        </div>
+      </div>
+
+      <div class="ctrl-group">
+        <label class="ctrl-label">Consumers</label>
+        <div class="counter-row">
+          <button class="counter-btn" onclick="adjustCount('cons',-1)">−</button>
+          <span class="counter-num" id="cons-count">2</span>
+          <button class="counter-btn" onclick="adjustCount('cons',1)">+</button>
+          <span style="font-size:11px;color:var(--text3);margin-left:4px">max 4</span>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="ctrl-group">
+        <label class="ctrl-label">Producer Speed</label>
+        <div class="ctrl-row">
+          <input type="range" id="prod-speed" min="200" max="2000" value="800" step="100"
+            oninput="document.getElementById('prod-speed-val').textContent=(this.value/1000).toFixed(1)+'s'">
+          <span class="range-val" id="prod-speed-val">0.8s</span>
+        </div>
+      </div>
+
+      <div class="ctrl-group">
+        <label class="ctrl-label">Consumer Speed</label>
+        <div class="ctrl-row">
+          <input type="range" id="cons-speed" min="200" max="2000" value="1000" step="100"
+            oninput="document.getElementById('cons-speed-val').textContent=(this.value/1000).toFixed(1)+'s'">
+          <span class="range-val" id="cons-speed-val">1.0s</span>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Produced</div>
+          <div class="stat-val green" id="stat-produced">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Consumed</div>
+          <div class="stat-val red" id="stat-consumed">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Waiting</div>
+          <div class="stat-val amber" id="stat-waiting">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">In Buffer</div>
+          <div class="stat-val blue" id="stat-inbuf">0</div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="ctrl-label" style="margin-bottom:10px">Semaphores</div>
+      <div class="sem-row">
+        <div class="sem-item">
+          <div class="sem-header">
+            <span class="sem-name">sem_empty</span>
+            <span class="sem-count" id="sem-empty-val" style="color:var(--amber)">6</span>
+          </div>
+          <div class="sem-bar-track">
+            <div class="sem-bar-fill empty" id="sem-empty-bar" style="width:100%"></div>
+          </div>
+        </div>
+        <div class="sem-item">
+          <div class="sem-header">
+            <span class="sem-name">sem_full</span>
+            <span class="sem-count" id="sem-full-val" style="color:var(--blue)">0</span>
+          </div>
+          <div class="sem-bar-track">
+            <div class="sem-bar-fill full" id="sem-full-bar" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="sem-item">
+          <div class="sem-header">
+            <span class="sem-name">mutex_lock</span>
+            <span class="sem-count" id="mutex-val" style="color:var(--purple)">1</span>
+          </div>
+          <div class="sem-bar-track">
+            <div class="sem-bar-fill mutex" id="mutex-bar" style="width:100%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="height:12px"></div>
+      <div class="mutex-display" id="mutex-display">
+        <div class="lock-icon" id="lock-icon">🔓</div>
+        <div class="lock-info">
+          <div class="lock-status" id="lock-status" style="color:var(--green)">Unlocked</div>
+          <div class="lock-holder" id="lock-holder">Available for any thread</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── CENTER PANEL ── -->
+  <div class="panel center-panel">
+
+    <div class="buffer-container">
+      <div class="buffer-title">
+        <h3>Shared Buffer (Circular Queue)</h3>
+        <span class="buffer-meta" id="buf-meta">0 / 6 slots used</span>
+      </div>
+      <div class="buffer-track" id="buffer-track"></div>
+      <div style="display:flex;gap:24px;margin-top:10px;font-family:var(--font);font-size:11px;color:var(--text3)">
+        <span>↑ head (consumer reads): <span id="ptr-head" style="color:var(--amber)">0</span></span>
+        <span>↑ tail (producer writes): <span id="ptr-tail" style="color:var(--blue)">0</span></span>
+      </div>
+    </div>
+
+    <div class="threads-section">
+      <h3>Thread Status</h3>
+      <div class="threads-grid" id="threads-grid"></div>
+    </div>
+
+    <div id="flow-graphic" style="padding:0 24px 24px">
+      <h3 style="font-family:var(--font);font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Synchronization Flow</h3>
+      <svg width="100%" viewBox="0 0 580 120" style="display:block">
+        <defs>
+          <marker id="arr2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M2 2L8 5L2 8" fill="none" stroke="#5b9cf6" stroke-width="1.5" stroke-linecap="round"/>
+          </marker>
+        </defs>
+        <rect x="10" y="35" width="110" height="50" rx="8" fill="rgba(61,220,132,0.1)" stroke="rgba(61,220,132,0.35)" stroke-width="1"/>
+        <text x="65" y="56" text-anchor="middle" font-size="11" fill="#3ddc84" font-family="monospace" font-weight="600">PRODUCER</text>
+        <text x="65" y="73" text-anchor="middle" font-size="9" fill="rgba(61,220,132,0.6)" font-family="monospace">wait(sem_empty)</text>
+        <line x1="120" y1="60" x2="155" y2="60" stroke="#5b9cf6" stroke-width="1" marker-end="url(#arr2)"/>
+        <rect x="157" y="35" width="110" height="50" rx="8" fill="rgba(167,139,250,0.1)" stroke="rgba(167,139,250,0.35)" stroke-width="1"/>
+        <text x="212" y="56" text-anchor="middle" font-size="11" fill="#a78bfa" font-family="monospace" font-weight="600">MUTEX</text>
+        <text x="212" y="73" text-anchor="middle" font-size="9" fill="rgba(167,139,250,0.6)" font-family="monospace">lock / unlock</text>
+        <line x1="267" y1="60" x2="302" y2="60" stroke="#5b9cf6" stroke-width="1" marker-end="url(#arr2)"/>
+        <rect x="304" y="20" width="110" height="80" rx="8" fill="rgba(91,156,246,0.1)" stroke="rgba(91,156,246,0.35)" stroke-width="1"/>
+        <text x="359" y="50" text-anchor="middle" font-size="11" fill="#5b9cf6" font-family="monospace" font-weight="600">BUFFER</text>
+        <text x="359" y="67" text-anchor="middle" font-size="9" fill="rgba(91,156,246,0.6)" font-family="monospace">enqueue/dequeue</text>
+        <text x="359" y="84" text-anchor="middle" font-size="9" fill="rgba(91,156,246,0.4)" font-family="monospace">circular queue</text>
+        <line x1="414" y1="60" x2="449" y2="60" stroke="#5b9cf6" stroke-width="1" marker-end="url(#arr2)"/>
+        <rect x="451" y="35" width="120" height="50" rx="8" fill="rgba(255,91,91,0.1)" stroke="rgba(255,91,91,0.35)" stroke-width="1"/>
+        <text x="511" y="56" text-anchor="middle" font-size="11" fill="#ff5b5b" font-family="monospace" font-weight="600">CONSUMER</text>
+        <text x="511" y="73" text-anchor="middle" font-size="9" fill="rgba(255,91,91,0.6)" font-family="monospace">wait(sem_full)</text>
+        <text x="138" y="22" text-anchor="middle" font-size="9" fill="#5b9cf6" font-family="monospace">signal(sem_full)</text>
+        <text x="434" y="22" text-anchor="middle" font-size="9" fill="#5b9cf6" font-family="monospace">signal(sem_empty)</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ── RIGHT PANEL ── -->
+  <div class="panel log-panel">
+    <div class="tabs-bar">
+      <button class="tab-btn active" onclick="switchTab('logs',this)">Logs</button>
+      <button class="tab-btn" onclick="switchTab('docs',this)">Documentation</button>
+    </div>
+
+    <div class="tab-content active" id="tab-logs">
+      <div class="log-scroll" id="log-scroll">
+        <div class="log-entry" style="padding-top:12px">
+          <span class="log-time">00:00.0</span>
+          <span class="log-tag tag-system">SYSTEM</span>
+          <span class="log-msg">Simulator ready. Press <span class="highlight">Start</span> to begin.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-docs">
+      <div class="docs">
+        <h2>What is the Producer-Consumer Problem?</h2>
+        <p>A classic <strong>Operating Systems synchronization problem</strong> where two types of processes share a fixed-size buffer. Producers add items; consumers remove them.</p>
+
+        <h2>Synchronization Primitives</h2>
+        <p><span class="badge badge-mut">mutex_lock</span> &nbsp;Binary semaphore for <em>mutual exclusion</em>. Only one thread accesses the buffer at a time.</p>
+        <p><span class="badge badge-sem">sem_empty</span> &nbsp;Counts empty slots. Initialized to buffer size. Producer blocks when 0.</p>
+        <p><span class="badge badge-sem">sem_full</span> &nbsp;&nbsp;Counts filled slots. Initialized to 0. Consumer blocks when 0.</p>
+
+        <h2>Pseudocode</h2>
+        <pre><span class="cm"># Shared state</span>
+buffer[N]
+sem_empty = <span class="kw">Semaphore</span>(N)
+sem_full  = <span class="kw">Semaphore</span>(0)
+mutex     = <span class="kw">Mutex</span>()
+
+<span class="kw">def</span> <span class="fn">producer</span>():
+    item = <span class="fn">produce_item</span>()
+    <span class="fn">wait</span>(sem_empty)   <span class="cm"># block if full</span>
+    <span class="fn">lock</span>(mutex)       <span class="cm"># critical section</span>
+    <span class="fn">enqueue</span>(item)
+    <span class="fn">unlock</span>(mutex)
+    <span class="fn">signal</span>(sem_full)  <span class="cm"># notify consumer</span>
+
+<span class="kw">def</span> <span class="fn">consumer</span>():
+    <span class="fn">wait</span>(sem_full)    <span class="cm"># block if empty</span>
+    <span class="fn">lock</span>(mutex)       <span class="cm"># critical section</span>
+    item = <span class="fn">dequeue</span>()
+    <span class="fn">unlock</span>(mutex)
+    <span class="fn">signal</span>(sem_empty) <span class="cm"># notify producer</span>
+    <span class="fn">consume</span>(item)</pre>
+
+        <h2>Educational Model</h2>
+        <p>Processes, semaphores, the mutex, and scheduling are modeled by this application's JavaScript state machine. They are not real OS threads or kernel synchronization primitives. The separate race lab replays a deterministic interleaving; it does not modify this buffer.</p>
+
+        <h2>Why Semaphore Order Matters</h2>
+        <p>Always <code>wait(semaphore)</code> <em>before</em> <code>lock(mutex)</code>. Reversing causes <strong>deadlock</strong>: a producer holds the mutex and blocks on sem_empty while the consumer is blocked trying to acquire the same mutex.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="lab-suite" aria-labelledby="lab-suite-title">
+  <div class="lab-heading">
+    <div>
+      <p class="lab-kicker">Advanced OS Synchronization Lab</p>
+      <h2 id="lab-suite-title">Experiments &amp; analysis</h2>
+    </div>
+    <p class="lab-model-note">Educational JavaScript model · single event loop · no kernel threads or OS semaphores</p>
+  </div>
+  <div class="lab-tabs" role="tablist" aria-label="Advanced OS labs">
+    <button class="lab-tab active" id="lab-tab-process" role="tab" aria-selected="true" aria-controls="lab-process" data-lab="process">Process &amp; Sync</button>
+    <button class="lab-tab" id="lab-tab-race" role="tab" aria-selected="false" aria-controls="lab-race" data-lab="race">Race Condition</button>
+    <button class="lab-tab" id="lab-tab-scheduling" role="tab" aria-selected="false" aria-controls="lab-scheduling" data-lab="scheduling">CPU Scheduling</button>
+    <button class="lab-tab" id="lab-tab-analytics" role="tab" aria-selected="false" aria-controls="lab-analytics" data-lab="analytics">Analytics</button>
+    <button class="lab-tab" id="lab-tab-guided" role="tab" aria-selected="false" aria-controls="lab-guided" data-lab="guided">Guided Experiments</button>
+    <button class="lab-tab" id="lab-tab-presentation" role="tab" aria-selected="false" aria-controls="lab-presentation" data-lab="presentation">Presentation</button>
+  </div>
+
+  <div class="lab-view active" id="lab-process" role="tabpanel" aria-labelledby="lab-tab-process">
+    <div class="lab-toolbar">
+      <button class="lab-action" id="lab-play">Start</button>
+      <button class="lab-action" id="lab-pause" disabled>Pause</button>
+      <button class="lab-action" id="lab-step">Next step</button>
+      <button class="lab-action" id="lab-back" disabled>Previous step</button>
+      <button class="lab-action" id="lab-reset">Reset</button>
+      <label class="lab-toggle"><input type="checkbox" id="lab-step-mode"> Step-through</label>
+      <span class="lab-clock" id="lab-clock">0 ms</span>
+    </div>
+    <div class="lab-grid process-grid">
+      <section class="lab-panel">
+        <h3>Process states &amp; queues</h3>
+        <div class="queue-row"><strong>Ready queue</strong><span id="ready-queue">Empty</span></div>
+        <div class="queue-row"><strong>Blocked queue</strong><span id="blocked-queue">Empty</span></div>
+        <div id="process-list" class="process-list"></div>
+        <h4>Selected process history</h4>
+        <label class="sr-only" for="process-select">Choose process history</label>
+        <select id="process-select"></select>
+        <ol id="process-history" class="history-list"></ol>
+      </section>
+      <section class="lab-panel">
+        <h3>Semaphore &amp; mutex inspector</h3>
+        <p class="lab-explanation">A producer runs <code>wait(sem_empty) → lock(mutex) → enqueue → unlock → signal(sem_full)</code>. A consumer runs <code>wait(sem_full) → lock(mutex) → dequeue → unlock → signal(sem_empty)</code>.</p>
+        <div class="inspector-stats" id="sync-values"></div>
+        <h4>Operation timeline</h4>
+        <ol id="operation-timeline" class="timeline-list" aria-live="polite"></ol>
+      </section>
+    </div>
+  </div>
+
+  <div class="lab-view" id="lab-race" role="tabpanel" aria-labelledby="lab-tab-race" hidden>
+    <div class="lab-grid">
+      <section class="lab-panel">
+        <h3>Shared counter: two increments</h3>
+        <p class="lab-explanation">This is a deterministic educational interleaving, not a genuine thread race. It is isolated from the producer-consumer buffer.</p>
+        <label class="lab-toggle"><input type="checkbox" id="race-mutex"> Protect increments with a mutex</label>
+        <button class="lab-action" id="race-run">Run example</button>
+        <p class="race-result" id="race-result" aria-live="polite">Expected result: 2</p>
+      </section>
+      <section class="lab-panel"><h3>Conflicting operation sequence</h3><ol id="race-trace" class="timeline-list"></ol></section>
+    </div>
+  </div>
+
+  <div class="lab-view" id="lab-scheduling" role="tabpanel" aria-labelledby="lab-tab-scheduling" hidden>
+    <section class="lab-panel">
+      <div class="lab-inline-heading"><h3>CPU scheduler</h3>
+        <label>Algorithm <select id="sched-algorithm"><option value="FCFS">FCFS</option><option value="SJF">SJF (non-preemptive)</option><option value="RR">Round Robin</option></select></label>
+        <label>Quantum <input id="sched-quantum" type="number" min="1" max="1000" value="2"></label>
+        <button class="lab-action" id="sched-add">Add process</button>
+        <button class="lab-action" id="sched-run">Schedule</button>
+      </div>
+      <div class="table-scroll"><table class="lab-table"><thead><tr><th>Process</th><th>Arrival</th><th>Burst</th><th>Action</th></tr></thead><tbody id="sched-inputs"></tbody></table></div>
+      <p id="sched-error" class="lab-error" role="alert"></p>
+      <div id="gantt-chart" class="gantt-chart" aria-label="CPU Gantt chart"></div>
+      <div class="table-scroll"><table class="lab-table"><thead><tr><th>Process</th><th>Completion</th><th>Turnaround</th><th>Waiting</th><th>Response</th></tr></thead><tbody id="sched-results"></tbody></table></div>
+      <h4>Ready queue evolution</h4><ol id="sched-ready" class="history-list"></ol>
+      <p id="sched-explanation" class="lab-explanation"></p>
+    </section>
+  </div>
+
+  <div class="lab-view" id="lab-analytics" role="tabpanel" aria-labelledby="lab-tab-analytics" hidden>
+    <div class="lab-toolbar"><button class="lab-action" id="analytics-reset">Reset experiment summary</button><button class="lab-action" id="analytics-export">Export CSV</button><span class="lab-model-note">All figures are calculated from modeled operations and virtual elapsed time.</span></div>
+    <div id="analytics-metrics" class="analytics-metrics"></div>
+    <div class="lab-grid">
+      <section class="lab-panel"><h3>Produced &amp; consumed</h3><canvas id="activity-chart" height="220" aria-label="Produced and consumed items by simulation sample"></canvas></section>
+      <section class="lab-panel"><h3>Buffer utilization &amp; blocking</h3><canvas id="utilization-chart" height="220" aria-label="Buffer utilization and blocked processes by sample"></canvas></section>
+    </div>
+    <div class="lab-panel"><h3>Experiment summary</h3><div class="table-scroll"><table class="lab-table"><tbody id="experiment-summary"></tbody></table></div></div>
+  </div>
+
+  <div class="lab-view" id="lab-guided" role="tabpanel" aria-labelledby="lab-tab-guided" hidden>
+    <section class="lab-panel">
+      <h3>Guided scenarios</h3>
+      <label for="scenario-select">Scenario</label>
+      <select id="scenario-select"></select>
+      <p id="scenario-outcome" class="lab-explanation"></p>
+      <button class="lab-action" id="scenario-apply">Apply settings and reset simulation</button>
+      <p class="lab-explanation">The race-condition scenario configures the separate Race Condition lab; it never disables synchronization in the shared-buffer model.</p>
+    </section>
+  </div>
+
+  <div class="lab-view" id="lab-presentation" role="tabpanel" aria-labelledby="lab-tab-presentation" hidden>
+    <div class="presentation-toolbar">
+      <button class="lab-action" id="presentation-fullscreen">Enter full screen</button>
+      <button class="lab-action" id="presentation-start">Start</button>
+      <button class="lab-action" id="presentation-pause">Pause</button>
+      <button class="lab-action" id="presentation-reset">Reset</button>
+      <button class="lab-action" id="presentation-next">Next step</button>
+      <button class="lab-action" id="presentation-previous">Previous / replay</button>
+      <button class="lab-action" id="presentation-export">Download summary CSV</button>
+    </div>
+    <div class="lab-grid">
+      <section class="lab-panel presentation-operation"><p class="lab-kicker">Current operation</p><h3 id="presentation-current">Start with a guided experiment</h3><p id="presentation-detail" class="lab-explanation">The event explanation will appear here as the model advances.</p><h4>Two-minute walkthrough</h4><ol class="history-list"><li>Set buffer size to 1 and choose Buffer-full blocking.</li><li>Advance through wait(sem_empty), lock, enqueue, unlock and signal(sem_full).</li><li>Run until a producer blocks; observe the blocked reason and queue.</li><li>Open Race Condition and compare its lost update with mutex protection.</li><li>Open CPU Scheduling, run Round Robin, then explain waiting and turnaround.</li></ol></section>
+      <section class="lab-panel"><h3>Architecture and ordering</h3><div class="architecture-flow"><span>Producer</span><b>wait(sem_empty)</b><b>lock(mutex)</b><span>Shared buffer</span><b>unlock(mutex)</b><b>signal(sem_full)</b><span>Consumer</span></div><p class="lab-explanation">Consumers reverse the resource semaphores: wait(sem_full) before locking, then dequeue, unlock, and signal(sem_empty). Waiting on the counting semaphore before acquiring the mutex avoids holding the critical-section lock while blocked for a buffer resource.</p></section>
+      <section class="lab-panel"><h3>OS concepts glossary</h3><dl id="glossary-list" class="glossary-list"></dl></section>
+      <section class="lab-panel"><h3>Viva questions</h3><details id="viva-list"><summary>Show questions and concise answers</summary><dl></dl></details></section>
+    </div>
+  </div>
+</section>
+
+<section class="about-view" id="about-view" aria-labelledby="about-hero-title" hidden>
+  <div class="about-hero">
+    <p class="about-eyebrow">OPERATING SYSTEMS · PROCESS SYNCHRONIZATION</p>
+    <p class="about-project">Producer–Consumer Management System</p>
+    <h1 id="about-hero-title">Meet the Minds Behind the System</h1>
+    <p class="about-team-name">404 Invalid Team</p>
+    <p class="about-intro">We are a team of computer science students exploring Operating Systems through interactive simulation, synchronization, and process management.</p>
+    <div class="about-domain-tags" aria-label="Project domains"><span>Operating Systems</span><span>Process Synchronization</span><span>Semaphores</span><span>Mutex</span></div>
+  </div>
+
+  <section class="team-section" aria-labelledby="team-title">
+    <div class="about-section-heading"><div><p class="about-eyebrow">THE PEOPLE</p><h2 id="team-title">Meet our team</h2></div><span>Computer science students · 5 members</span></div>
+    <article class="team-lead-card">
+      <div class="team-avatar team-avatar-lead" aria-hidden="true">PS</div>
+      <div class="team-person-copy"><p class="team-role">TEAM LEAD</p><h3>Pawan Singh</h3><p>Producer–Consumer Management System</p></div>
+      <div class="team-social-links" aria-label="Pawan Singh's profiles">
+        <a href="https://www.linkedin.com/in/pawan-singh-555423322/" target="_blank" rel="noopener noreferrer" aria-label="Pawan Singh on LinkedIn (opens in a new tab)">LinkedIn <span aria-hidden="true">↗</span></a>
+        <a href="https://github.com/pawan00207" target="_blank" rel="noopener noreferrer" aria-label="Pawan Singh on GitHub (opens in a new tab)">GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+    </article>
+    <div class="team-member-grid" aria-label="Team members">
+      <article class="team-member-card"><div class="team-avatar" aria-hidden="true">MK</div><h3>Manik Khurana</h3></article>
+      <article class="team-member-card"><div class="team-avatar" aria-hidden="true">KB</div><h3>Kartik Bohra</h3></article>
+      <article class="team-member-card"><div class="team-avatar" aria-hidden="true">AV</div><h3>Ansh Verma</h3></article>
+      <article class="team-member-card"><div class="team-avatar" aria-hidden="true">PK</div><h3>Prashant Kumar</h3></article>
+    </div>
+  </section>
+
+  <div class="about-details-grid">
+    <section class="about-detail-panel" aria-labelledby="mission-title">
+      <p class="about-eyebrow">WHY WE BUILT IT</p>
+      <h2 id="mission-title">Our Mission</h2>
+      <p>Our goal is to make Operating Systems synchronization concepts easier to understand through a practical, interactive learning tool. By observing process states, buffer operations, semaphore permits, and mutex ownership, students can connect core theory to a visible model.</p>
+    </section>
+    <section class="about-detail-panel" aria-labelledby="built-title">
+      <p class="about-eyebrow">THE PROJECT</p>
+      <h2 id="built-title">What We Built</h2>
+      <ul class="about-build-list">
+        <li><span>01</span><div><strong>Producer–Consumer simulation</strong><small>Step-through educational process model.</small></div></li>
+        <li><span>02</span><div><strong>Shared circular buffer</strong><small>Bounded slots with visible head and tail pointers.</small></div></li>
+        <li><span>03</span><div><strong>Semaphore and mutex synchronization</strong><small>Modeled wait/signal operations and lock ownership.</small></div></li>
+        <li><span>04</span><div><strong>Process status monitoring</strong><small>State transitions, histories, and ready/blocked queues.</small></div></li>
+        <li><span>05</span><div><strong>Live event logs</strong><small>Recorded simulation operations and process transitions.</small></div></li>
+      </ul>
+      <p class="about-model-note">Educational JavaScript model; it does not create real OS threads or kernel synchronization primitives.</p>
+    </section>
+  </div>
+
+  <footer class="about-footer"><span class="footer-mark" aria-hidden="true">404</span><p>Built with curiosity by <strong>404 Invalid Team</strong></p><a href="#/dashboard">Back to overview ↑</a></footer>
+</section>
+
+    </div>
+  </main>
+</div>
+
+<script type="module" src="advanced-ui.js"></script>
+</body>
+</html>

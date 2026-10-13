@@ -1,0 +1,8 @@
+{
+	"name": "producer-consumer-synchronization-lab",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"test": "node --test"
+	}
+}
