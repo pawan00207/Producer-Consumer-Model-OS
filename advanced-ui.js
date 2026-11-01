@@ -50,6 +50,66 @@ function eventTime(ms) {
 	return `${(ms / 1000).toFixed(1)}s`;
 }
 
+function renderTopology(snapshot) {
+	const occupied = snapshot.buffer.filter((item) => item !== null).length;
+	const overviewBuffer = byId('overview-buffer-track');
+	if (overviewBuffer) {
+		overviewBuffer.replaceChildren(...snapshot.buffer.map((item, index) => {
+			const slot = document.createElement('span');
+			const address = document.createElement('small');
+			const payload = document.createElement('b');
+			const pointers = document.createElement('em');
+			slot.className = `overview-slot ${item === null ? 'empty' : 'filled'}`;
+			address.textContent = `0x${index.toString(16).padStart(2, '0')}`;
+			payload.textContent = item === null ? 'EMPTY' : String(item);
+			pointers.textContent = [snapshot.head === index ? 'HEAD ▲' : '', snapshot.tail === index ? 'TAIL ▼' : ''].filter(Boolean).join(' ');
+			slot.append(address, payload, pointers);
+			if (snapshot.head === index) slot.classList.add('head');
+			if (snapshot.tail === index) slot.classList.add('tail');
+			slot.title = `0x${index.toString(16).padStart(2, '0')} ${item === null ? 'empty' : `item ${item}`}`;
+			return slot;
+		}));
+	}
+	byId('overview-buffer-meta').textContent = `${occupied} / ${snapshot.capacity}`;
+	byId('overview-head').textContent = `0x${snapshot.head.toString(16).padStart(2, '0')}`;
+	byId('overview-tail').textContent = `0x${snapshot.tail.toString(16).padStart(2, '0')}`;
+	byId('overview-mutex').textContent = snapshot.mutex.locked ? '0' : '1';
+	byId('overview-empty').textContent = String(snapshot.semaphores.empty.value);
+	byId('overview-full').textContent = String(snapshot.semaphores.full.value);
+	byId('overview-producer-count').textContent = String(snapshot.processes.filter((process) => process.kind === 'producer').length);
+	byId('overview-consumer-count').textContent = String(snapshot.processes.filter((process) => process.kind === 'consumer').length);
+
+	const renderPool = (containerId, kind) => {
+		const container = byId(containerId);
+		container.replaceChildren(...snapshot.processes.filter((process) => process.kind === kind).map((process) => {
+			const row = document.createElement('div');
+			const name = document.createElement('b');
+			const stateLabel = document.createElement('span');
+			row.className = `overview-thread ${process.state.toLowerCase().replace(/[^a-z]+/g, '-')}`;
+			name.textContent = process.name;
+			stateLabel.textContent = process.state;
+			row.append(name, stateLabel);
+			return row;
+		}));
+	};
+	renderPool('overview-producer-list', 'producer');
+	renderPool('overview-consumer-list', 'consumer');
+	byId('overview-utilization-slots').replaceChildren(...snapshot.buffer.map((item) => {
+		const slot = document.createElement('span');
+		slot.className = `mini-slot ${item === null ? 'empty' : 'filled'}`;
+		return slot;
+	}));
+	byId('overview-worker-leds').replaceChildren(...snapshot.processes.map((process) => {
+		const led = document.createElement('span');
+		led.className = `mini-led ${process.state === PROCESS_STATES.RUNNING ? 'running' : process.state === PROCESS_STATES.BLOCKED ? 'blocked' : 'idle'}`;
+		led.title = `${process.name}: ${process.state}`;
+		return led;
+	}));
+	byId('nav-buffer-count').textContent = `${occupied}/${snapshot.capacity}`;
+	byId('nav-worker-count').textContent = String(snapshot.processes.length);
+	byId('nav-log-count').textContent = String(snapshot.events.length);
+}
+
 function appendDashboardLogs() {
 	const container = byId('log-scroll');
 	const events = state.simulation.events;
@@ -80,6 +140,7 @@ function appendDashboardLogs() {
 function renderOriginalDashboard() {
 	const snapshot = state.simulation.snapshot();
 	const metrics = state.simulation.metrics();
+	renderTopology(snapshot);
 	const track = byId('buffer-track');
 	track.replaceChildren();
 	snapshot.buffer.forEach((item, index) => {
@@ -129,12 +190,12 @@ function renderOriginalDashboard() {
 	byId('overview-worker-count').textContent = `${snapshot.processes.length} configured processes`;
 	byId('overview-blocked').textContent = String(snapshot.blockedQueue.length);
 	byId('overview-feedback').textContent = state.running ? 'Simulation is running.' : snapshot.stopped ? 'Simulation stopped. Start again to create a fresh run.' : snapshot.clock ? 'Simulation paused. Resume to continue.' : 'Simulation is ready.';
-	byId('overview-start').disabled = state.running;
-	byId('overview-pause').disabled = !state.running;
-	byId('overview-resume').disabled = state.running || snapshot.stopped || snapshot.clock === 0;
+	byId('transport-run').disabled = state.running;
+	byId('transport-pause').disabled = !state.running;
+	byId('transport-prev').disabled = state.simulation.undoStack.length === 0 || state.running;
 	byId('status-dot').classList.toggle('paused', !state.running);
-	byId('btn-start').disabled = state.running;
-	byId('btn-stop').disabled = !state.running;
+	byId('btn-start')?.toggleAttribute('disabled', state.running);
+	byId('btn-stop')?.toggleAttribute('disabled', !state.running);
 	byId('buf-size').disabled = state.running;
 	document.querySelectorAll('.counter-btn').forEach((button) => { button.disabled = state.running; });
 
@@ -203,7 +264,8 @@ function renderProcessLab(snapshot) {
 		item.dataset.process = process.id;
 		item.setAttribute('aria-pressed', String(byId('process-select').value === process.id));
 		const reason = process.reason || (process.state === PROCESS_STATES.NEW ? 'Awaiting scheduler admission' : 'No blocking reason');
-		item.innerHTML = `<strong>${esc(process.name)}</strong><span class="process-state">${esc(process.state)}</span><span class="process-reason">${esc(reason)}</span>`;
+		const lock = snapshot.mutex.owner === process.id ? 'HELD' : '—';
+		item.innerHTML = `<strong>${esc(process.id)}</strong><span>${esc(process.name)}</span><span>${esc(process.kind.toUpperCase())}</span><span class="process-state">${esc(process.state)}</span><span>${lock}</span><span>${process.operations}</span><small class="process-reason">${esc(reason)}</small>`;
 		list.append(item);
 	}
 	const select = byId('process-select');
@@ -239,9 +301,9 @@ function renderProcessLab(snapshot) {
 		row.innerHTML = `<time>${event.time} ms</time><strong>${esc(event.type)}</strong><span>${esc(event.process)}: ${esc(event.message)}</span>${event.explanation ? `<small>${esc(event.explanation)}</small>` : ''}`;
 		timeline.append(row);
 	}
-	byId('lab-back').disabled = state.simulation.undoStack.length === 0 || state.running;
-	byId('lab-pause').disabled = !state.running;
-	byId('lab-play').disabled = state.running;
+	byId('transport-prev').disabled = state.simulation.undoStack.length === 0 || state.running;
+	byId('transport-pause').disabled = !state.running;
+	byId('transport-run').disabled = state.running;
 }
 
 function renderAnalytics(snapshot, metrics) {
@@ -271,6 +333,16 @@ function renderAnalytics(snapshot, metrics) {
 		{ label: 'Buffer %', key: 'utilization', color: '#5b9cf6', percent: true },
 		{ label: 'Blocked', key: 'blocked', color: '#fca63c' }
 	], state.chartSamples);
+	renderChartData(byId('activity-data'), [
+		{ label: 'Time', key: 'time', format: (value) => `${value} ms` },
+		{ label: 'Produced', key: 'produced' },
+		{ label: 'Consumed', key: 'consumed' }
+	], state.chartSamples);
+	renderChartData(byId('utilization-data'), [
+		{ label: 'Time', key: 'time', format: (value) => `${value} ms` },
+		{ label: 'Buffer utilization', key: 'utilization', format: (value) => `${(value * 100).toFixed(1)}%` },
+		{ label: 'Blocked processes', key: 'blocked' }
+	], state.chartSamples);
 	const events = snapshot.events.slice(state.baseline.eventCount);
 	const blocked = blockedDurationSinceBaseline(snapshot);
 	const summary = experimentSummary({ ...snapshot, events, produced: counts.produced, consumed: counts.consumed }, {
@@ -284,6 +356,25 @@ function renderAnalytics(snapshot, metrics) {
 	});
 	byId('experiment-summary').innerHTML = Object.entries(summary)
 		.map(([key, value]) => `<tr><th>${esc(key)}</th><td>${esc(typeof value === 'number' && key === 'bufferUtilization' ? `${(value * 100).toFixed(1)}%` : value)}</td></tr>`).join('');
+}
+
+function renderChartData(container, columns, samples) {
+	container.replaceChildren();
+	if (samples.length === 0) {
+		container.textContent = 'No samples recorded yet.';
+		return;
+	}
+	const table = document.createElement('table');
+	table.className = 'lab-table';
+	table.innerHTML = `<caption class="sr-only">${columns.map((column) => column.label).join(', ')}</caption><thead><tr>${columns.map((column) => `<th scope="col">${esc(column.label)}</th>`).join('')}</tr></thead>`;
+	const body = document.createElement('tbody');
+	for (const sample of samples) {
+		const row = document.createElement('tr');
+		row.innerHTML = columns.map((column) => `<td>${esc(column.format ? column.format(sample[column.key]) : sample[column.key])}</td>`).join('');
+		body.append(row);
+	}
+	table.append(body);
+	container.append(table);
 }
 
 function blockedDurationSinceBaseline(snapshot) {
@@ -429,6 +520,21 @@ function useTab(name) {
 	if (name === 'analytics') renderOriginalDashboard();
 }
 
+function switchDashboardTab(name, button) {
+	document.querySelectorAll('.tabs-bar .tab-btn').forEach((element) => {
+		const selected = element === button || element.dataset.tab === name;
+		element.classList.toggle('active', selected);
+		element.setAttribute('aria-selected', String(selected));
+		element.tabIndex = selected ? 0 : -1;
+		element.id = `tab-${element.dataset.tab}-trigger`;
+	});
+	document.querySelectorAll('.panel .tab-content').forEach((element) => {
+		const selected = element.id === `tab-${name}`;
+		element.classList.toggle('active', selected);
+		element.hidden = !selected;
+	});
+}
+
 const ROUTES = {
 	dashboard: { title: 'Overview', kind: 'dashboard' },
 	simulator: { title: 'Producer–Consumer Simulator', kind: 'simulator' },
@@ -476,8 +582,8 @@ function navigateToCurrentHash() {
 	if (definition.tab) {
 		if (definition.kind === 'lab') useTab(definition.tab);
 		else {
-			const button = document.querySelector(`.tabs-bar .tab-btn[onclick*="${definition.tab}"]`);
-			if (button) window.switchTab(definition.tab, button);
+			const button = document.querySelector(`.tabs-bar .tab-btn[data-tab="${definition.tab}"]`);
+			if (button) switchDashboardTab(definition.tab, button);
 		}
 	}
 	if (route === 'viva') byId('viva-list').open = true;
@@ -574,30 +680,53 @@ function exportExperiment() {
 }
 
 function initializeAdditions() {
-	document.querySelectorAll('.lab-tab').forEach((tab) => {
-		tab.addEventListener('click', () => useTab(tab.dataset.lab));
+	document.querySelectorAll('.counter-btn[data-count-kind]').forEach((button) => {
+		button.addEventListener('click', () => window.adjustCount(button.dataset.countKind, Number(button.dataset.countChange)));
 	});
-	document.querySelector('.lab-tabs').addEventListener('keydown', (event) => {
-		if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
-		const tabs = [...document.querySelectorAll('.lab-tab')];
-		const current = tabs.indexOf(document.activeElement);
-		const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 :
-			(current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
-		event.preventDefault();
-		tabs[next].focus();
-		tabs[next].click();
+	document.querySelectorAll('.tabs-bar .tab-btn[data-tab]').forEach((button) => {
+		button.addEventListener('click', () => switchDashboardTab(button.dataset.tab, button));
 	});
-	byId('lab-play').addEventListener('click', startSimulation);
-	byId('lab-pause').addEventListener('click', () => setRunning(false));
-	byId('lab-step').addEventListener('click', advanceOne);
-	byId('lab-back').addEventListener('click', () => {
+	byId('transport-run').addEventListener('click', startSimulation);
+	byId('transport-pause').addEventListener('click', () => setRunning(false));
+	byId('transport-prev').addEventListener('click', () => {
 		if (state.simulation.back()) renderOriginalDashboard();
 	});
-	byId('lab-reset').addEventListener('click', resetSimulation);
-	byId('overview-start').addEventListener('click', startSimulation);
-	byId('overview-pause').addEventListener('click', () => setRunning(false));
-	byId('overview-resume').addEventListener('click', startSimulation);
-	byId('overview-reset').addEventListener('click', resetSimulation);
+	byId('transport-step').addEventListener('click', advanceOne);
+	byId('transport-reset').addEventListener('click', resetSimulation);
+	byId('overview-log-clear').addEventListener('click', () => {
+		byId('log-scroll').replaceChildren();
+		byId('recent-activity').replaceChildren();
+		state.lastDashboardEvent = state.simulation.events.length;
+	});
+	byId('overview-log-filter').addEventListener('click', () => {
+		byId('log-scroll').classList.toggle('filtered');
+	});
+	byId('command-palette').addEventListener('click', () => document.querySelector('.sidebar-link.active')?.focus());
+	byId('transport-speed').addEventListener('input', (event) => {
+		const scale = Number(event.target.value);
+		byId('transport-tick').textContent = `Tick: ${(0.8 / scale).toFixed(2)}s`;
+		byId('prod-speed').value = String(Math.max(200, Math.round(800 / scale / 100) * 100));
+		byId('cons-speed').value = String(Math.max(200, Math.round(1000 / scale / 100) * 100));
+		byId('prod-speed').dispatchEvent(new Event('input'));
+		byId('cons-speed').dispatchEvent(new Event('input'));
+	});
+	byId('scenario-preset').addEventListener('change', (event) => {
+		byId('scenario-select').value = event.target.value;
+		byId('scenario-select').dispatchEvent(new Event('change'));
+		byId('scenario-apply').click();
+	});
+	document.addEventListener('keydown', (event) => {
+		if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+		if (event.key === ' ') {
+			event.preventDefault();
+			if (state.running) setRunning(false);
+			else startSimulation();
+		} else if (event.key === '[') {
+			if (state.simulation.back()) renderOriginalDashboard();
+		} else if (event.key === ']') advanceOne();
+		else if (event.key.toLowerCase() === 's') advanceOne();
+		else if (event.key.toLowerCase() === 'r') resetSimulation();
+	});
 	byId('sidebar-toggle').addEventListener('click', () => {
 		const shell = document.querySelector('.app-shell');
 		const expanded = byId('sidebar-toggle').getAttribute('aria-expanded') === 'true';
@@ -689,13 +818,6 @@ function initializeAdditions() {
 			byId('presentation-detail').textContent = 'Full-screen mode is unavailable in this browser context.';
 		}
 	});
-	byId('presentation-start').addEventListener('click', startSimulation);
-	byId('presentation-pause').addEventListener('click', () => setRunning(false));
-	byId('presentation-reset').addEventListener('click', resetSimulation);
-	byId('presentation-next').addEventListener('click', advanceOne);
-	byId('presentation-previous').addEventListener('click', () => {
-		if (state.simulation.back()) renderOriginalDashboard();
-	});
 	byId('presentation-export').addEventListener('click', exportExperiment);
 	byId('viva-list').querySelector('dl').innerHTML = VIVA_QUESTIONS.map(([question, answer]) => `<dt>${esc(question)}</dt><dd>${esc(answer)}</dd>`).join('');
 	byId('glossary-list').innerHTML = OS_GLOSSARY.map(([term, explanation]) => `<dt>${esc(term)}</dt><dd>${esc(explanation)}</dd>`).join('');
@@ -703,23 +825,13 @@ function initializeAdditions() {
 	updateScenarioDescription();
 }
 
-window.startSim = startSimulation;
-window.stopSim = stopSimulation;
-window.resetSim = resetSimulation;
 window.adjustCount = (kind, change) => {
 	if (state.running) return;
 	const id = kind === 'prod' ? 'prod-count' : 'cons-count';
 	byId(id).textContent = String(Math.max(1, Math.min(4, Number(byId(id).textContent) + change)));
 	resetSimulation();
 };
-window.switchTab = (tab, button) => {
-	document.querySelectorAll('.tabs-bar .tab-btn').forEach((element) => element.classList.remove('active'));
-	document.querySelectorAll('.panel .tab-content').forEach((element) => element.classList.remove('active'));
-	button.classList.add('active');
-	byId(`tab-${tab}`).classList.add('active');
-};
-
-byId('conn-pill').textContent = 'Educational model';
+byId('conn-pill').textContent = 'LOCAL';
 byId('conn-pill').style.color = 'var(--amber)';
 byId('buf-size').addEventListener('input', () => {
 	byId('buf-size-val').textContent = byId('buf-size').value;
